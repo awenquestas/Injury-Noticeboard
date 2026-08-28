@@ -531,19 +531,19 @@
     closeModal();
   });
 
-  // initial render + refresh every hour to catch day rollover, plus refresh on tab focus
+  // initial render, plus refresh on tab focus (in case data changed
+  // while the tab was in the background)
   render();
-  setInterval(render, 60*60*1000);
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState === 'visible') render();
   });
 
-  // Auto-reload the whole page every minute. This keeps the displayed
+  // Auto-reload the whole page every hour. This keeps the displayed
   // dates in sync with JSONBin and ensures the Cast Pro always shows
   // the latest version of the page without needing a manual refresh.
   setInterval(()=>{
     location.reload();
-  }, 60*1000);
+  }, 60*60*1000);
 </script>
 
 </div>
