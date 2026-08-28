@@ -422,7 +422,7 @@
       </div>
     </div>
 
-    <p class="storage-note">Dates are saved in this browser (localStorage), so the counters keep counting up automatically every day, even after you close and reopen the page.</p>
+    <p class="storage-note">Dates are saved to a shared server, so they sync across every device viewing this page — including the Cast Pro.</p>
 
     <div class="modal-actions">
       <button class="btn-cancel" id="cancelBtn">Cancel</button>
@@ -432,34 +432,52 @@
 </div>
 
 <script>
-  const STORAGE_KEY = 'injuryNoticeboardDates';
-  const KEYS = ['lti', 'mti', 'fai'];
+  // Shared cloud storage via JSONBin.io so every device (including
+  // the Cast Pro) shows the same dates.
+  const BIN_ID = '6a9120f3da38895dfe1af236';
+  const MASTER_KEY = '$2a$10$8OEPuonXMKVd3v8H.2QHguOK8iVqjcN2YargOkMgksrY6BJbdXRBq';
+  const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+  let currentDates = null; // cache of the last dates we fetched
 
   function todayISO(){
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
 
-  function loadDates(){
-    let stored = null;
+  async function fetchDates(){
     try{
-      stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const res = await fetch(`${BIN_URL}/latest`, {
+        headers: { 'X-Master-Key': MASTER_KEY }
+      });
+      if(!res.ok) throw new Error('Fetch failed: ' + res.status);
+      const data = await res.json();
+      currentDates = data.record;
     }catch(e){
-      stored = null;
+      console.warn('Could not fetch dates from JSONBin, using fallback', e);
+      if(!currentDates){
+        const t = todayISO();
+        currentDates = { lti: t, mti: t, fai: t };
+      }
     }
-    if(!stored){
-      const t = todayISO();
-      stored = { lti: t, mti: t, fai: t };
-      saveDates(stored);
-    }
-    return stored;
+    return currentDates;
   }
 
-  function saveDates(dates){
+  async function saveDates(dates){
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dates));
+      const res = await fetch(BIN_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': MASTER_KEY
+        },
+        body: JSON.stringify(dates)
+      });
+      if(!res.ok) throw new Error('Save failed: ' + res.status);
+      currentDates = dates;
     }catch(e){
-      console.warn('Could not save to localStorage', e);
+      console.warn('Could not save dates to JSONBin', e);
+      alert('Could not save to the shared server. Check your internet connection and try again.');
     }
   }
 
@@ -471,15 +489,15 @@
     return diff < 0 ? 0 : diff;
   }
 
-  function render(){
-    const dates = loadDates();
+  async function render(){
+    const dates = await fetchDates();
     document.getElementById('days-lti').textContent = daysSince(dates.lti);
     document.getElementById('days-mti').textContent = daysSince(dates.mti);
     document.getElementById('days-fai').textContent = daysSince(dates.fai);
   }
 
-  function openModal(){
-    const dates = loadDates();
+  async function openModal(){
+    const dates = await fetchDates();
     document.getElementById('date-lti').value = dates.lti;
     document.getElementById('date-mti').value = dates.mti;
     document.getElementById('date-fai').value = dates.fai;
@@ -502,14 +520,14 @@
     });
   });
 
-  document.getElementById('saveBtn').addEventListener('click', ()=>{
+  document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const newDates = {
       lti: document.getElementById('date-lti').value || todayISO(),
       mti: document.getElementById('date-mti').value || todayISO(),
       fai: document.getElementById('date-fai').value || todayISO(),
     };
-    saveDates(newDates);
-    render();
+    await saveDates(newDates);
+    await render();
     closeModal();
   });
 
