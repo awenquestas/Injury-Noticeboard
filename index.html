@@ -537,6 +537,13 @@
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState === 'visible') render();
   });
+
+  // Auto-reload the whole page every minute. This keeps the displayed
+  // dates in sync with JSONBin and ensures the Cast Pro always shows
+  // the latest version of the page without needing a manual refresh.
+  setInterval(()=>{
+    location.reload();
+  }, 60*1000);
 </script>
 
 </div>
