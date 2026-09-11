@@ -126,10 +126,11 @@
   .stat-col{
     flex:1;
     display:flex;
+    flex-direction:column;
     align-items:center;
-    justify-content:center;
-    gap: 26px;
-    padding: 65px 39px;
+    justify-content:flex-start;
+    gap: 14px;
+    padding: 24px 28px 20px;
     border-right:2px solid var(--purple);
   }
   .stat-col:last-child{
@@ -138,30 +139,36 @@
   .stat-box{
     background:var(--purple);
     color:#fff;
-    font-size: 83.2px;
+    font-size: 140px;
     font-weight:800;
-    min-width: 156px;
-    height: 156px;
+    width:100%;
+    max-width: 480px;
+    height: 224px;
     display:flex;
     align-items:center;
     justify-content:center;
     flex-shrink:0;
-    letter-spacing:-2px;
+    letter-spacing:-4px;
+  }
+  .stat-label{
+    text-align:center;
   }
   .stat-label .days{
-    font-size: 31.2px;
-    color:#444;
-    font-weight:600;
+    font-size: 44px;
+    color:#333;
+    font-weight:800;
     display:block;
   }
   .stat-label .since{
-    font-size: 13.52px;
-    color:#666;
-    margin-top: 5.2px;
+    font-size: 22px;
+    color:#333;
+    font-weight:700;
+    margin-top: 6px;
     display:block;
   }
   .stat-label .since b{
     color:#333;
+    font-weight:700;
   }
 
   .footer-logos{
@@ -349,21 +356,21 @@
       <div class="stat-box" id="days-lti">0</div>
       <div class="stat-label">
         <span class="days">Days</span>
-        <span class="since">Since Last<br><b>Lost Time Injury</b></span>
+        <span class="since">Since Last Lost Time Injury</span>
       </div>
     </div>
     <div class="stat-col">
       <div class="stat-box" id="days-mti">0</div>
       <div class="stat-label">
         <span class="days">Days</span>
-        <span class="since">Since Last<br><b>Medical Treatment Injury</b></span>
+        <span class="since">Since Last Medical Treatment Injury</span>
       </div>
     </div>
     <div class="stat-col">
       <div class="stat-box" id="days-fai">0</div>
       <div class="stat-label">
         <span class="days">Days</span>
-        <span class="since">Since Last<br><b>First Aid Injury</b></span>
+        <span class="since">Since Last First Aid Injury</span>
       </div>
     </div>
   </div>
