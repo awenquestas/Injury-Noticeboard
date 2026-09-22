@@ -438,12 +438,22 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-  // Shared cloud storage via JSONBin.io so every device (including
-  // the Cast Pro) shows the same dates.
-  const BIN_ID = '6a9120f3da38895dfe1af236';
-  const MASTER_KEY = '$2a$10$8OEPuonXMKVd3v8H.2QHguOK8iVqjcN2YargOkMgksrY6BJbdXRBq';
-  const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+  // Shared cloud storage via Firebase Realtime Database so every
+  // device (including the Cast Pro) shows the same dates.
+  const firebaseConfig = {
+    apiKey: "AIzaSyAw6hX2NFqlhKTdVoKOZzrAOj6UgzdQcq8",
+    authDomain: "injury-noticeboard.firebaseapp.com",
+    databaseURL: "https://injury-noticeboard-default-rtdb.firebaseio.com",
+    projectId: "injury-noticeboard",
+    storageBucket: "injury-noticeboard.firebasestorage.app",
+    messagingSenderId: "1058397213430",
+    appId: "1:1058397213430:web:c741027ef678295b3112d7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const datesRef = firebase.database().ref('dates');
 
   let currentDates = null; // cache of the last dates we fetched
   const LOCAL_CACHE_KEY = 'injuryNoticeboardDates';
@@ -472,15 +482,13 @@
 
   async function fetchDates(){
     try{
-      const res = await fetch(`${BIN_URL}/latest`, {
-        headers: { 'X-Master-Key': MASTER_KEY }
-      });
-      if(!res.ok) throw new Error('Fetch failed: ' + res.status);
-      const data = await res.json();
-      currentDates = data.record;
+      const snapshot = await datesRef.once('value');
+      const data = snapshot.val();
+      if(!data) throw new Error('No dates found in Firebase yet');
+      currentDates = data;
       setCachedDates(currentDates);
     }catch(e){
-      console.warn('Could not fetch dates from JSONBin, using fallback', e);
+      console.warn('Could not fetch dates from Firebase, using fallback', e);
       if(!currentDates){
         // Try the last known-good values we saved locally before
         // falling back to "today" (which would show 0 days and
@@ -499,19 +507,11 @@
 
   async function saveDates(dates){
     try{
-      const res = await fetch(BIN_URL, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Master-Key': MASTER_KEY
-        },
-        body: JSON.stringify(dates)
-      });
-      if(!res.ok) throw new Error('Save failed: ' + res.status);
+      await datesRef.set(dates);
       currentDates = dates;
       setCachedDates(currentDates);
     }catch(e){
-      console.warn('Could not save dates to JSONBin', e);
+      console.warn('Could not save dates to Firebase', e);
       alert('Could not save to the shared server. Check your internet connection and try again.');
     }
   }
@@ -574,7 +574,7 @@
   });
 
   // Auto-reload the whole page every hour. This keeps the displayed
-  // dates in sync with JSONBin and ensures the Cast Pro always shows
+  // dates in sync with Firebase and ensures the Cast Pro always shows
   // the latest version of the page without needing a manual refresh.
   setInterval(()=>{
     location.reload();
