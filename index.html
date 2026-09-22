@@ -446,10 +446,28 @@
   const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
   let currentDates = null; // cache of the last dates we fetched
+  const LOCAL_CACHE_KEY = 'injuryNoticeboardDates';
 
   function todayISO(){
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function getCachedDates(){
+    try{
+      const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function setCachedDates(dates){
+    try{
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(dates));
+    }catch(e){
+      // ignore (e.g. storage disabled) - not critical
+    }
   }
 
   async function fetchDates(){
@@ -460,11 +478,20 @@
       if(!res.ok) throw new Error('Fetch failed: ' + res.status);
       const data = await res.json();
       currentDates = data.record;
+      setCachedDates(currentDates);
     }catch(e){
       console.warn('Could not fetch dates from JSONBin, using fallback', e);
       if(!currentDates){
-        const t = todayISO();
-        currentDates = { lti: t, mti: t, fai: t };
+        // Try the last known-good values we saved locally before
+        // falling back to "today" (which would show 0 days and
+        // could look like a fresh incident just happened).
+        const cached = getCachedDates();
+        if(cached){
+          currentDates = cached;
+        } else {
+          const t = todayISO();
+          currentDates = { lti: t, mti: t, fai: t };
+        }
       }
     }
     return currentDates;
@@ -482,6 +509,7 @@
       });
       if(!res.ok) throw new Error('Save failed: ' + res.status);
       currentDates = dates;
+      setCachedDates(currentDates);
     }catch(e){
       console.warn('Could not save dates to JSONBin', e);
       alert('Could not save to the shared server. Check your internet connection and try again.');
