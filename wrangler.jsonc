@@ -1,0 +1,17 @@
+{
+  "name": "injury-noticeboard",
+  "compatibility_date": "2026-09-01",
+  "main": "src/worker.js",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "INJURY_DATES",
+      "id": "900e4dd9b1f149a38d8680f82659b197"
+    }
+  ]
+}
