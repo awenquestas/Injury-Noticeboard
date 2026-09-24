@@ -438,25 +438,20 @@
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-  // Shared cloud storage via Firebase Realtime Database so every
-  // device (including the Cast Pro) shows the same dates.
-  const firebaseConfig = {
-    apiKey: "AIzaSyAw6hX2NFqlhKTdVoKOZzrAOj6UgzdQcq8",
-    authDomain: "injury-noticeboard.firebaseapp.com",
-    databaseURL: "https://injury-noticeboard-default-rtdb.firebaseio.com",
-    projectId: "injury-noticeboard",
-    storageBucket: "injury-noticeboard.firebasestorage.app",
-    messagingSenderId: "1058397213430",
-    appId: "1:1058397213430:web:c741027ef678295b3112d7"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const datesRef = firebase.database().ref('dates');
+  // Shared cloud storage via a Cloudflare Worker + KV, keyed per
+  // workshop (taken from the URL path, e.g. /richlands, /clontarf).
+  // This lets one deployment serve multiple workshops, each only
+  // ever reading/writing its own dates.
+  function getWorkshopSlug(){
+    const seg = window.location.pathname.split('/').filter(Boolean)[0] || '';
+    return seg.toLowerCase();
+  }
+  const WORKSHOP = getWorkshopSlug();
+  const API_URL = `/api/dates?workshop=${encodeURIComponent(WORKSHOP)}`;
 
   let currentDates = null; // cache of the last dates we fetched
-  const LOCAL_CACHE_KEY = 'injuryNoticeboardDates';
+  const LOCAL_CACHE_KEY = 'injuryNoticeboardDates:' + WORKSHOP;
 
   function todayISO(){
     const d = new Date();
@@ -482,13 +477,14 @@
 
   async function fetchDates(){
     try{
-      const snapshot = await datesRef.once('value');
-      const data = snapshot.val();
-      if(!data) throw new Error('No dates found in Firebase yet');
+      const res = await fetch(API_URL);
+      if(!res.ok) throw new Error('Fetch failed: ' + res.status);
+      const data = await res.json();
+      if(!data) throw new Error('No dates found for this workshop yet');
       currentDates = data;
       setCachedDates(currentDates);
     }catch(e){
-      console.warn('Could not fetch dates from Firebase, using fallback', e);
+      console.warn('Could not fetch dates from server, using fallback', e);
       if(!currentDates){
         // Try the last known-good values we saved locally before
         // falling back to "today" (which would show 0 days and
@@ -507,11 +503,16 @@
 
   async function saveDates(dates){
     try{
-      await datesRef.set(dates);
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dates)
+      });
+      if(!res.ok) throw new Error('Save failed: ' + res.status);
       currentDates = dates;
       setCachedDates(currentDates);
     }catch(e){
-      console.warn('Could not save dates to Firebase', e);
+      console.warn('Could not save dates to server', e);
       alert('Could not save to the shared server. Check your internet connection and try again.');
     }
   }
@@ -574,7 +575,7 @@
   });
 
   // Auto-reload the whole page every hour. This keeps the displayed
-  // dates in sync with Firebase and ensures the Cast Pro always shows
+  // dates in sync with the server and ensures the Cast Pro always shows
   // the latest version of the page without needing a manual refresh.
   setInterval(()=>{
     location.reload();
